@@ -304,6 +304,7 @@ table{border-collapse:collapse;width:100%}
     <section class="panel c5">
       <div class="ph"><div><h2>Por asignación</h2><p>Barra segmentada por antigüedad. Clic para filtrar.</p></div></div>
       <div class="hbars" id="asgBars"></div>
+      <div class="legend" id="asgLegend"></div>
     </section>
 
     <section class="panel c12">
@@ -586,6 +587,7 @@ function perChart(){
     el.addEventListener('click',()=>togglePer(p));
     bindTip(el,()=>`<b>${PER[p]}</b><br><span class="tn">${money(A.per[p])}</span><br>${pct(A.per[p],A.tot)} de la deuda filtrada<br><span style="opacity:.7">${BANDLAB[BAND[p]]} · clic para filtrar</span>`)});
   $('perLegend').innerHTML=BANDLAB.map((l,i)=>`<span><i style="background:var(${BANDVAR[i]})"></i>${l}</span>`).join('');
+  $('asgLegend').innerHTML=$('perLegend').innerHTML;
 }
 function roundTop(x,y,w,h,r){if(h<=0)return '';return `M${x},${y+h}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h}Z`}
 function niceStep(v){const p=Math.pow(10,Math.floor(Math.log10(v||1)));const n=v/p;return (n<=1?1:n<=2?2:n<=5?5:10)*p}
