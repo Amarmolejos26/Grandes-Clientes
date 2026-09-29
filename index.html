@@ -237,6 +237,17 @@ table{border-collapse:collapse;width:100%}
 .vrow.cred{color:var(--green)}.vrow.cred b{color:var(--green)}.vrow.cred:hover{background:var(--green-bg)}
 .vrow small{font-weight:500;color:var(--ink-2);font-size:10.5px}
 .slist td.n{font-family:var(--mono);white-space:nowrap}
+.slist{table-layout:fixed;width:100%}
+.slist th:nth-child(1),.slist td:nth-child(1){width:74px}
+.slist th:nth-child(3),.slist td:nth-child(3){width:128px}
+.slist th:nth-child(4),.slist td:nth-child(4){width:108px}
+.slist td{vertical-align:top;white-space:normal}
+.slist .cn{font-weight:600;color:var(--ink);line-height:1.3;word-break:break-word}
+.slist .cm{font-size:10.5px;color:var(--ink-2);line-height:1.35;margin-top:2px}
+.slist .tel{font-family:var(--mono);font-size:11px;color:var(--primary);margin-top:3px}
+.slist .dt{font-size:11px;color:var(--ink-2);line-height:1.35}
+.slist .dt b{font-family:var(--mono);font-weight:500;color:var(--ink)}
+@media (max-width:560px){.slist th:nth-child(3),.slist td:nth-child(3){display:none}}
 .slist td,.slist th{padding:7px 6px}
 #drawer .pane.wide{width:min(680px,100%)}
 .resumen{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:12px 18px;box-shadow:var(--shadow)}
@@ -478,14 +489,14 @@ function aggregate(ignoreE){
     if(qq&&!nameLC[c].includes(qq))continue;
     const m=row[5];
     let rt=0,rv=0,rn=0,rMes=0,rHist=0;
-    const cr=a.cli.get(c)||{c,t:0,per:new Float64Array(NP),v:0,n:0,ex:new Map(),s:new Map(),est:new Float64Array(EST.length)};
+    const cr=a.cli.get(c)||{c,t:0,vp:new Float64Array(NP),per:new Float64Array(NP),v:0,n:0,ex:new Map(),s:new Map(),est:new Float64Array(EST.length)};
     for(let j=0;j<m.length;j+=6){
       const p=m[j];if(perOn&&!F.per.has(p))continue;
       const e=m[j+1],amt=m[j+2],v=m[j+3],n=m[j+4],rc=m[j+5];
       rt+=amt;rv+=v;rn+=n;a.rec+=rc;
       a.per[p]+=amt;a.vper[p]+=v;a.est[e]+=amt;
       a.hm.s[row[1]][p]+=amt;a.hm.e[row[3]][p]+=amt;a.hm.u[row[2]][p]+=amt;a.hm.a[cl[2]][p]+=amt;
-      cr.per[p]+=amt;cr.est[e]+=amt;
+      cr.per[p]+=amt;cr.vp[p]+=v;cr.est[e]+=amt;
       if(p===0)rMes+=amt;if(KIND[p]!=='m')rHist+=amt;
     }
     if(rn===0)continue;
@@ -539,8 +550,8 @@ function kpis(){
   <div class="kpi c-red"><span class="l">Deuda vencida</span><span class="v">${mm(A.venc)}<small>MM RD$</small></span><span class="s">Vencimiento hasta el ${D.corte} · <b>${pct(A.venc,t)}</b> del total</span>
     <span class="s vlist">${(()=>{const vp=p=>A.vper[p]-A.credP[p];
       const L=[[LB.mes,vp(0),A.spec.some(x=>!x[9]&&x[1]===0)?'mes':'']];
-      if(MIDP.length)L.push([LB.prev,vp(MIDP[0]),'']);let m2=0;for(const p of MIDP.slice(1))m2+=vp(p);if(MIDP.length>1)L.push([LB.mid2,m2,'']);
-      let h=0;for(const p of HIST)h+=vp(p);L.push([LB.hist,h,'']);
+      if(MIDP.length)L.push([LB.prev,vp(MIDP[0]),'prev']);let m2=0;for(const p of MIDP.slice(1))m2+=vp(p);if(MIDP.length>1)L.push([LB.mid2,m2,'mid']);
+      let h=0;for(const p of HIST)h+=vp(p);L.push([LB.hist,h,'hist']);
       const cr=A.credP.reduce((s,v)=>s+v,0),nc=new Set(A.spec.filter(x=>x[9]).map(x=>x[0])).size;
       if(nc)L.push([`Créditos cargos varios <small>${nc} NIC</small>`,cr,'cred']);
       return L.map(([l,v,k])=>k?`<button type="button" class="vrow lnk${k==='cred'?' cred':''}" data-spec="${k}"><span>${k==='cred'?l:esc(l)} <i aria-hidden="true">›</i></span><b>${mm(v)}</b></button>`:`<span class="vrow"><span>${esc(l)}</span><b>${mm(v)}</b></span>`).join('')})()}</span></div>
@@ -745,28 +756,52 @@ function openClient(c){
 }
 function fdate(s){if(!s)return '—';const d=new Date(Date.UTC(1899,11,30)+s*864e5);return String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear()}
 function openSpec(kind){
-  const list=A.spec.filter(x=>kind==='cred'?x[9]:(!x[9]&&x[1]===0)).sort((a,b)=>kind==='cred'?a[8]-b[8]:b[8]-a[8]);
-  const tot=list.reduce((s,x)=>s+x[8],0),nn=new Set(list.map(x=>x[0])).size;
-  const byT=new Map();list.forEach(x=>byT.set(x[4],(byT.get(x[4])||0)+x[8]));
-  const title=kind==='cred'?'Créditos por cargos varios':`${LB.mes} · recibos ya vencidos`;
-  const sub=kind==='cred'?'Recibos de "Cargos varios" con importe negativo (notas de crédito a favor del cliente). Restan de la deuda vencida.':`Recibos puestos al cobro en ${LB.mesLong} con vencimiento hasta el ${D.corte}. No incluye la facturación normal de consumo, que vence después del corte.`;
+  const inv=kind==='mes'||kind==='cred';
+  const PS2=100;let shown=PS2;
+  let rows,title,sub,byLab,byMap=new Map();
+  const telOf=c=>CL[c][5]||'';
+  if(inv){
+    const list=A.spec.filter(x=>kind==='cred'?x[9]:(!x[9]&&x[1]===0)).sort((a,b)=>kind==='cred'?a[8]-b[8]:b[8]-a[8]);
+    rows=list.map(x=>({c:x[0],e:x[2],amt:x[8],det:`<div class="dt">${esc(TIPOS[x[4]]||'—')}</div><div class="dt">Vence <b>${fdate(x[7])}</b></div>`,xl:[TIPOS[x[4]]||'',EST[x[5]]||'',fdate(x[6]),fdate(x[7])]}));
+    list.forEach(x=>byMap.set(TIPOS[x[4]]||'—',(byMap.get(TIPOS[x[4]]||'—')||0)+x[8]));byLab='Por tipo de recibo';
+    title=kind==='cred'?'Créditos por cargos varios':`${LB.mes} · recibos ya vencidos`;
+    sub=kind==='cred'?'Recibos de "Cargos varios" con importe negativo (notas de crédito a favor del cliente). Restan de la deuda vencida.':`Recibos puestos al cobro en ${LB.mesLong} con vencimiento hasta el ${D.corte}. No incluye la facturación normal de consumo, que vence después del corte.`;
+  }else{
+    const ps=kind==='prev'?[MIDP[0]]:kind==='mid'?MIDP.slice(1):HIST;
+    const pl=kind==='prev'?LB.prev:kind==='mid'?LB.mid2:LB.hist;
+    const cred=new Map();for(const x of A.spec)if(x[9]&&ps.includes(x[1]))cred.set(x[0],(cred.get(x[0])||0)+x[8]);
+    rows=[];for(const cr of A.clients){let v=0;for(const p of ps)v+=cr.vp[p];v-=cred.get(cr.c)||0;if(Math.abs(v)>=1){const cl=CL[cr.c];
+      rows.push({c:cr.c,e:argmax(cr.ex),amt:v,det:`${maxPill(cl[9])}<div style="margin-top:4px">${supPill(cl[4])}</div>`,xl:[MAXO[cl[9]]||'',DIM.z[cl[4]]||'']})}}
+    rows.sort((a,b)=>b.amt-a.amt);
+    rows.forEach(r=>{const k=DIM.a[CL[r.c][2]];byMap.set(k,(byMap.get(k)||0)+r.amt)});byLab='Por asignación';
+    title=`${pl} · deuda vencida`;
+    const mnL=p=>{const i=perInfo(PER[p]);return i.kind==='m'?MESES[i.m].toLowerCase()+' '+i.y:PLAB[p]};
+    const hy=HIST.map(p=>perInfo(PER[p])).filter(i=>i.kind==='y').map(i=>i.y);
+    const phr=kind==='prev'?mnL(ps[0]):kind==='mid'?(ps.length>1?MESES[perInfo(PER[ps[ps.length-1]]).m].toLowerCase()+'–'+mnL(ps[0]):mnL(ps[0])):(hy.length?'hasta '+Math.max(...hy):LB.hist);
+    sub=`Clientes con deuda vencida al ${D.corte} en facturas puestas al cobro ${kind==='hist'?'':'en '}${phr}. Ordenados de mayor a menor.`;
+  }
+  const tot=rows.reduce((s,r)=>s+r.amt,0),nn=new Set(rows.map(r=>r.c)).size;
+  const bmax=Math.max(1,...[...byMap.values()].map(Math.abs));
+  const rowHtml=r=>{const cl=CL[r.c];const tel=telOf(r.c);return `<tr data-c="${r.c}" tabindex="0"><td class="mono">${cl[0]}</td><td><div class="cn">${esc(tc(cl[1]))}</div><div class="cm">${esc(DIM.a[cl[2]])} · ${esc(tc(DIM.e[r.e]??''))}</div>${tel?`<div class="tel">☎ ${esc(tel)}</div>`:''}</td><td>${r.det}</td><td class="n" style="${r.amt<0?'color:var(--green);font-weight:600':''}">${nf0.format(r.amt)}</td></tr>`};
   $('dPane').innerHTML=`
     <div class="dhead"><div><div class="eyebrow">Deuda vencida · detalle</div><h2 id="dTitle">${esc(title)}</h2></div><button class="hbtn" id="dClose" type="button">Cerrar</button></div>
     <div class="dbody">
       <div class="kpis"><div class="kpi ${kind==='cred'?'c-green':'c-accent'}"><span class="l">Importe</span><span class="v">${mm(tot)}<small>MM</small></span></div>
-        <div class="kpi"><span class="l">Recibos</span><span class="v">${nf0.format(list.length)}</span></div>
-        <div class="kpi"><span class="l">NIC</span><span class="v">${nf0.format(nn)}</span></div></div>
+        <div class="kpi"><span class="l">${inv?'Recibos':'Clientes'}</span><span class="v">${nf0.format(rows.length)}</span></div>
+        ${inv?`<div class="kpi"><span class="l">NIC</span><span class="v">${nf0.format(nn)}</span></div>`:`<div class="kpi"><span class="l">% de la deuda vencida</span><span class="v">${pct(tot,A.venc)}</span></div>`}</div>
       <p class="note" style="text-align:left;margin:0">${esc(sub)}</p>
-      ${byT.size>1?`<div class="dcard"><h3>Por tipo de recibo</h3><div class="hbars">${[...byT].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([k,v])=>`<div class="hb" style="cursor:default"><span class="lab">${esc(TIPOS[k]||'—')}</span><span class="track"><i style="width:${100*Math.abs(v)/Math.max(...[...byT.values()].map(Math.abs))}%;background:${v<0?'var(--green)':'var(--primary)'}"></i></span><span class="val">${mm(v)}</span></div>`).join('')}</div></div>`:''}
-      <div class="dcard" style="padding:0;overflow:hidden"><div class="scroll"><table class="tbl slist"><thead><tr><th>NIC</th><th>Cliente</th><th>Tipo</th><th>Vence</th><th class="n">Importe RD$</th></tr></thead><tbody>
-        ${list.map(x=>{const cl=CL[x[0]];return `<tr data-c="${x[0]}" tabindex="0" title="${esc(DIM.a[cl[2]])} · ${esc(tc(DIM.e[x[2]]))}"><td class="mono">${cl[0]}</td><td class="name" style="max-width:190px">${esc(tc(cl[1]))}<div style="font-weight:400;font-size:10.5px;color:var(--ink-2)">${esc(DIM.a[cl[2]])} · ${esc(tc(DIM.e[x[2]]))}</div></td><td class="sub" style="max-width:120px">${esc(TIPOS[x[4]]||'—')}</td><td class="mono">${fdate(x[7])}</td><td class="n" style="${x[8]<0?'color:var(--green);font-weight:600':''}">${nf0.format(x[8])}</td></tr>`}).join('')}
-      </tbody></table></div></div>
-      <div><button class="btn" id="specCopy" type="button">Copiar lista para Excel</button></div>
+      ${byMap.size>1?`<div class="dcard"><h3>${byLab}</h3><div class="hbars">${[...byMap].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([k,v])=>`<div class="hb" style="cursor:default"><span class="lab">${esc(k)}</span><span class="track"><i style="width:${100*Math.abs(v)/bmax}%;background:${v<0?'var(--green)':'var(--primary)'}"></i></span><span class="val">${mm(v)}</span></div>`).join('')}</div></div>`:''}
+      <div class="dcard" style="padding:0;overflow:hidden"><table class="tbl slist"><thead><tr><th>NIC</th><th>Cliente</th><th>${inv?'Tipo / vence':'Antigüedad'}</th><th class="n">Importe RD$</th></tr></thead><tbody id="slBody"></tbody></table></div>
+      <div class="pager"><span id="slInfo"></span><div class="btns"><button class="btn" id="slMore" type="button">Mostrar 100 más</button><button class="btn" id="specCopy" type="button">Copiar lista para Excel</button></div></div>
     </div>`;
-  $('dPane').classList.add('wide');
+  const draw=()=>{$('slBody').innerHTML=rows.slice(0,shown).map(rowHtml).join('');
+    $('slInfo').textContent=`${nf0.format(Math.min(shown,rows.length))} de ${nf0.format(rows.length)}`;$('slMore').hidden=shown>=rows.length;
+    $('slBody').querySelectorAll('tr').forEach(tr=>{const go=()=>openClient(+tr.dataset.c);tr.addEventListener('click',go);tr.addEventListener('keydown',e=>{if(e.key==='Enter')go()})})};
+  draw();$('slMore').onclick=()=>{shown+=PS2;draw()};
+  $('dPane').classList.add('wide');$('dPane').scrollTop=0;
   $('drawer').hidden=false;$('dClose').focus();$('dClose').onclick=closeD;
-  $('dPane').querySelectorAll('tbody tr').forEach(tr=>{const go=()=>openClient(+tr.dataset.c);tr.addEventListener('click',go);tr.addEventListener('keydown',e=>{if(e.key==='Enter')go()})});
-  $('specCopy').onclick=()=>copyText([['NIC','Cliente','Asignacion','Ejecutivo','Tipo recibo','Estado recibo','Emision','Vencimiento','Importe'].join('\t')].concat(list.map(x=>{const cl=CL[x[0]];return [cl[0],cl[1],DIM.a[cl[2]],DIM.e[x[2]],TIPOS[x[4]]||'',EST[x[5]]||'',fdate(x[6]),fdate(x[7]),x[8]].join('\t')})).join('\n'),`${list.length} recibos copiados. Pegue en Excel.`);
+  const head=inv?['NIC','Cliente','Asignacion','Ejecutivo','Telefono','Tipo recibo','Estado recibo','Emision','Vencimiento','Importe']:['NIC','Cliente','Asignacion','Ejecutivo','Telefono','Max antiguedad','Suministro','Deuda vencida'];
+  $('specCopy').onclick=()=>copyText([head.join('\t')].concat(rows.map(r=>{const cl=CL[r.c];return [cl[0],cl[1],DIM.a[cl[2]],DIM.e[r.e]??'',cl[5]||'',...r.xl,Math.round(r.amt*100)/100].join('\t')})).join('\n'),`${nf0.format(rows.length)} filas copiadas. Pegue en Excel.`);
 }
 // ===== Resumen vs corte anterior =====
 let resOpen=true;try{resOpen=localStorage.getItem('gc_res')!=='0'}catch(e){}
