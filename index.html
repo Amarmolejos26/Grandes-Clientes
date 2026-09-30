@@ -766,7 +766,7 @@ function openSpec(kind){
     rows=list.map(x=>({c:x[0],e:x[2],amt:x[8],det:`<div class="dt">${esc(TIPOS[x[4]]||'—')}</div><div class="dt">Vence <b>${fdate(x[7])}</b></div>`,xl:[TIPOS[x[4]]||'',EST[x[5]]||'',fdate(x[6]),fdate(x[7])]}));
     list.forEach(x=>byMap.set(TIPOS[x[4]]||'—',(byMap.get(TIPOS[x[4]]||'—')||0)+x[8]));byLab='Por tipo de recibo';
     title=kind==='cred'?'Créditos por cargos varios':`${LB.mes} · recibos ya vencidos`;
-    sub=kind==='cred'?'Recibos de "Cargos varios" con importe negativo (notas de crédito a favor del cliente). Restan de la deuda vencida.':`Recibos puestos al cobro en ${LB.mesLong} con vencimiento hasta el ${D.corte}. No incluye la facturación normal de consumo, que vence después del corte.`;
+    sub=kind==='cred'?'Recibos de "Cargos varios" con importe negativo (notas de crédito a favor del cliente). Restan de la deuda vencida.':`Recibos de ${LB.mesLong} que ya vencieron al ${D.corte}. Son principalmente cargos varios, garantías e irregularidades. Las facturas de consumo de ${LB.mesLong.split(' ')[0]} todavía no han vencido, por eso no aparecen aquí.`;
   }else{
     const ps=kind==='prev'?[MIDP[0]]:kind==='mid'?MIDP.slice(1):HIST;
     const pl=kind==='prev'?LB.prev:kind==='mid'?LB.mid2:LB.hist;
@@ -791,6 +791,8 @@ function openSpec(kind){
         <div class="kpi"><span class="l">${inv?'Recibos':'Clientes'}</span><span class="v">${nf0.format(rows.length)}</span></div>
         ${inv?`<div class="kpi"><span class="l">NIC</span><span class="v">${nf0.format(nn)}</span></div>`:`<div class="kpi"><span class="l">% de la deuda vencida</span><span class="v">${pct(tot,A.venc)}</span></div>`}</div>
       <p class="note" style="text-align:left;margin:0">${esc(sub)}</p>
+      ${inv&&rows.length?(()=>{const am=new Map();rows.forEach(r=>{const k=DIM.a[CL[r.c][2]];const o=am.get(k)||{v:0,n:0};o.v+=r.amt;o.n++;am.set(k,o)});const mx=Math.max(1,...[...am.values()].map(o=>Math.abs(o.v)));
+        return `<div class="dcard"><h3>Por asignación</h3><div class="hbars">${[...am].sort((a,b)=>Math.abs(b[1].v)-Math.abs(a[1].v)).map(([k,o])=>`<div class="hb" style="cursor:default"><span class="lab" title="${esc(k)}">${esc(k.replace('Clientes ',''))} <small style="color:var(--ink-2)">(${o.n})</small></span><span class="track"><i style="width:${100*Math.abs(o.v)/mx}%;background:${o.v<0?'var(--green)':'var(--accent)'}"></i></span><span class="val">${Math.abs(o.v)<1e6?new Intl.NumberFormat('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2}).format(o.v/1e6):mm(o.v)}</span></div>`).join('')}</div></div>`})():''}
       ${byMap.size>1?`<div class="dcard"><h3>${byLab}</h3><div class="hbars">${[...byMap].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).map(([k,v])=>`<div class="hb" style="cursor:default"><span class="lab">${esc(k)}</span><span class="track"><i style="width:${100*Math.abs(v)/bmax}%;background:${v<0?'var(--green)':'var(--primary)'}"></i></span><span class="val">${mm(v)}</span></div>`).join('')}</div></div>`:''}
       <div class="dcard" style="padding:0;overflow:hidden"><table class="tbl slist"><thead><tr><th>NIC</th><th>Cliente</th><th>${inv?'Tipo / vence':'Antigüedad'}</th><th class="n">Importe RD$</th></tr></thead><tbody id="slBody"></tbody></table></div>
       <div class="pager"><span id="slInfo"></span><div class="btns"><button class="btn" id="slMore" type="button">Mostrar 100 más</button><button class="btn" id="specCopy" type="button">Copiar lista para Excel</button></div></div>
