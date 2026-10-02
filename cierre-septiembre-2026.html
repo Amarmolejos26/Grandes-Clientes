@@ -884,7 +884,7 @@ function meta(){
   $('metaCorte').textContent=cm?`${+cm[1]} ${MESES[+cm[2]-1].toLowerCase()} ${cm[3]}`:(D.corte||'—');
   $('metaCli').textContent=nf0.format(CL.length);
   asgChips();
-  {const L=D.cierre?[['← Dashboard vigente','./']]:(D.cierres||[]).map(c=>[c.label,c.href]);
+  {const _h=new Date(),_ml=MESES[_h.getMonth()];const L=D.cierre?[['← '+_ml.charAt(0)+_ml.slice(1).toLowerCase()+' '+_h.getFullYear(),'./']]:(D.cierres||[]).map(c=>[c.label,c.href]);
    $('cierreNav').hidden=!L.length;$('cierreNav').innerHTML=L.map(([l,h])=>`<a class="hbtn" style="text-decoration:none;display:inline-block" href="${esc(h)}">${esc(l)}</a>`).join('')}
   if(D.cierre){$('cierrePill').hidden=false;$('cierrePill').querySelector('b').textContent='Cierre '+D.cierre;$('adminBox').hidden=true;document.title='Cierre '+D.cierre+' · Grandes Clientes'}
   $('srcNote').textContent='Fuente: IBM Cognos · Modelo de Deuda PK_DEUDA_PEND_MARCA';
