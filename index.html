@@ -333,7 +333,7 @@ table{border-collapse:collapse;width:100%}
     </section>
 
     <section class="panel c12">
-      <div class="ph"><div><h2>Estado del recibo</h2><p>Dónde está la deuda en el ciclo de corte</p></div></div>
+      <div class="ph"><div><h2>Estado del recibo</h2><p>Dónde está la deuda en el ciclo de corte. Clic en un estado para ver sus clientes.</p></div></div>
       <div class="hbars" id="estBars" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:3px 28px"></div>
     </section>
 
@@ -629,9 +629,8 @@ function hbars(el,items,{key,stacked,labelFn}){
     }else bar=`<i style="width:${100*Math.max(0,d.t)/max}%"></i>`;
     return `<div class="hb${on?' on':''}${dim?' dim':''}" data-k="${d.k}" tabindex="0" role="button" aria-pressed="${on}"><span class="lab" title="${esc(labelFn(d))}">${esc(labelFn(d))}</span><span class="track">${bar}</span><span class="val">${mm(d.t)}<span>${pct(d.t,A.tot)}</span></span></div>`}).join('');
   el.querySelectorAll('.hb').forEach((row,i)=>{const d=items[i];
-    const act=()=>key==='est'?null:setF(key,d.k);
-    if(key!=='est'){row.addEventListener('click',act);row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act()}})}
-    else{row.style.cursor='default'}
+    const act=()=>key==='est'?openSpec('est:'+d.k):setF(key,d.k);
+    row.addEventListener('click',act);row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act()}});
     bindTip(row,()=>{let h=`<b>${esc(labelFn(d))}</b><br><span class="tn">${money(d.t)}</span> · ${pct(d.t,A.tot)}`;
       if(d.n!=null)h+=`<br>${nf0.format(d.n)} clientes`;
       if(stacked){const b=new Float64Array(BANDLAB.length);for(let p=0;p<NP;p++)b[BAND[p]]+=d.per[p];h+='<br>'+BANDLAB.map((l,j)=>b[j]?`${l}: ${mm(b[j])} MM`:'').filter(Boolean).join('<br>')}
@@ -759,7 +758,7 @@ function openClient(c){
 }
 function fdate(s){if(!s)return '—';const d=new Date(Date.UTC(1899,11,30)+s*864e5);return String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear()}
 function openSpec(kind){
-  const inv=kind==='mes'||kind==='cred';
+  const inv=kind==='mes'||kind==='cred',isEst=String(kind).startsWith('est:');
   const PS2=100;let shown=PS2;
   let rows,title,sub,byLab,byMap=new Map();
   const telOf=c=>CL[c][5]||'';
@@ -769,6 +768,14 @@ function openSpec(kind){
     list.forEach(x=>byMap.set(TIPOS[x[4]]||'—',(byMap.get(TIPOS[x[4]]||'—')||0)+x[8]));byLab='Por tipo de recibo';
     title=kind==='cred'?'Créditos por cargos varios':`${LB.mes} · recibos ya vencidos`;
     sub=kind==='cred'?'Recibos de "Cargos varios" con importe negativo (notas de crédito a favor del cliente). Restan de la deuda vencida.':`Recibos de ${LB.mesLong} que ya vencieron al ${D.corte}. Son principalmente cargos varios, garantías e irregularidades. Las facturas de consumo de ${LB.mesLong.split(' ')[0]} todavía no han vencido, por eso no aparecen aquí.`;
+  }else if(isEst){
+    const ek=+kind.slice(4);
+    rows=[];for(const cr of A.clients){const v=cr.est[ek];if(Math.abs(v)>=1){const cl=CL[cr.c];
+      rows.push({c:cr.c,e:argmax(cr.ex),amt:v,det:`${maxPill(cl[9])}<div style="margin-top:4px">${supPill(cl[4])}</div>`,xl:[MAXO[cl[9]]||'',DIM.z[cl[4]]||'']})}}
+    rows.sort((a,b)=>b.amt-a.amt);
+    rows.forEach(r=>{const k=DIM.a[CL[r.c][2]];byMap.set(k,(byMap.get(k)||0)+r.amt)});byLab='Por asignación';
+    title=EST[ek];
+    sub=`Clientes con recibos en estado "${EST[ek]}" al ${D.corte}. El importe es la suma de sus recibos en ese estado, ordenados de mayor a menor.`;
   }else{
     const ps=kind==='prev'?[MIDP[0]]:kind==='mid'?MIDP.slice(1):HIST;
     const pl=kind==='prev'?LB.prev:kind==='mid'?LB.mid2:LB.hist;
@@ -787,11 +794,11 @@ function openSpec(kind){
   const bmax=Math.max(1,...[...byMap.values()].map(Math.abs));
   const rowHtml=r=>{const cl=CL[r.c];const tel=telOf(r.c);return `<tr data-c="${r.c}" tabindex="0"><td class="mono">${cl[0]}</td><td><div class="cn">${esc(tc(cl[1]))}</div><div class="cm">${esc(DIM.a[cl[2]])} · ${esc(tc(DIM.e[r.e]??''))}</div>${tel?`<div class="tel">☎ ${esc(tel)}</div>`:''}</td><td>${r.det}</td><td class="n" style="${r.amt<0?'color:var(--green);font-weight:600':''}">${nf0.format(r.amt)}</td></tr>`};
   $('dPane').innerHTML=`
-    <div class="dhead"><div><div class="eyebrow">Deuda vencida · detalle</div><h2 id="dTitle">${esc(title)}</h2></div><button class="hbtn" id="dClose" type="button">Cerrar</button></div>
+    <div class="dhead"><div><div class="eyebrow">${isEst?'Estado del recibo':'Deuda vencida'} · detalle</div><h2 id="dTitle">${esc(title)}</h2></div><button class="hbtn" id="dClose" type="button">Cerrar</button></div>
     <div class="dbody">
       <div class="kpis"><div class="kpi ${kind==='cred'?'c-green':'c-accent'}"><span class="l">Importe</span><span class="v">${mm(tot)}<small>MM</small></span></div>
         <div class="kpi"><span class="l">${inv?'Recibos':'Clientes'}</span><span class="v">${nf0.format(rows.length)}</span></div>
-        ${inv?`<div class="kpi"><span class="l">NIC</span><span class="v">${nf0.format(nn)}</span></div>`:`<div class="kpi"><span class="l">% de la deuda vencida</span><span class="v">${pct(tot,A.venc)}</span></div>`}</div>
+        ${inv?`<div class="kpi"><span class="l">NIC</span><span class="v">${nf0.format(nn)}</span></div>`:`<div class="kpi"><span class="l">${isEst?'% de la deuda total':'% de la deuda vencida'}</span><span class="v">${pct(tot,isEst?A.tot:A.venc)}</span></div>`}</div>
       <p class="note" style="text-align:left;margin:0">${esc(sub)}</p>
       ${inv&&rows.length?(()=>{const am=new Map();rows.forEach(r=>{const k=DIM.a[CL[r.c][2]];const o=am.get(k)||{v:0,n:0};o.v+=r.amt;o.n++;am.set(k,o)});const mx=Math.max(1,...[...am.values()].map(o=>Math.abs(o.v)));
         return `<div class="dcard"><h3>Por asignación</h3><div class="hbars">${[...am].sort((a,b)=>Math.abs(b[1].v)-Math.abs(a[1].v)).map(([k,o])=>`<div class="hb" style="cursor:default"><span class="lab" title="${esc(k)}">${esc(k.replace('Clientes ',''))} <small style="color:var(--ink-2)">(${o.n})</small></span><span class="track"><i style="width:${100*Math.abs(o.v)/mx}%;background:${o.v<0?'var(--green)':'var(--accent)'}"></i></span><span class="val">${Math.abs(o.v)<1e6?new Intl.NumberFormat('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2}).format(o.v/1e6):mm(o.v)}</span></div>`).join('')}</div></div>`})():''}
